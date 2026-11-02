@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CheckCircle2,
   LoaderCircle,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -110,19 +111,19 @@ export default function PracticePanel({
                   className="animate-spin"
                   aria-hidden="true"
                 />
-                답변 전송 중...
+                AI가 문장을 분석하고 있어요...
               </>
             ) : (
               <>
-                참고 표현 확인하기
-                <ArrowRight size={18} aria-hidden="true" />
+                <Sparkles size={18} aria-hidden="true" />
+                AI 첨삭 받기
               </>
             )}
           </button>
 
           {feedbackIsPending && (
             <p role="status" className="text-center text-sm text-muted">
-              서버에서 답변을 처리하고 있습니다.
+              문법과 자연스러운 표현을 확인하고 있습니다.
             </p>
           )}
 
@@ -134,7 +135,7 @@ export default function PracticePanel({
               <AlertCircle size={20} className="shrink-0" aria-hidden="true" />
 
               <div>
-                <p className="font-semibold">답변을 전송하지 못했습니다.</p>
+                <p className="font-semibold">AI 첨삭을 완료하지 못했습니다.</p>
 
                 <p className="mt-1">{feedbackError}</p>
               </div>
@@ -145,14 +146,18 @@ export default function PracticePanel({
             <div className="space-y-4">
               {feedbackResult && feedbackOriginalAnswer ? (
                 <>
-                  <div className="rounded-xl border border-border bg-background p-4">
-                    <p className="mb-1 text-sm font-semibold">
-                      Mock 첨삭 미리보기
-                    </p>
+                  <div
+                    role="status"
+                    className="flex items-center gap-2 rounded-xl bg-primary/15 p-4"
+                  >
+                    <CheckCircle2
+                      size={20}
+                      className="shrink-0 text-foreground"
+                      aria-hidden="true"
+                    />
 
-                    <p className="text-xs leading-5 text-muted">
-                      현재는 실제 AI가 입력한 문장을 분석하지 않습니다. 학습
-                      문제별로 준비한 예시 첨삭 결과를 보여줍니다.
+                    <p className="text-sm font-medium">
+                      {feedbackMessage ?? "AI 첨삭이 완료되었습니다."}
                     </p>
                   </div>
 
@@ -162,28 +167,15 @@ export default function PracticePanel({
                   />
                 </>
               ) : (
-                <div className="rounded-xl bg-accent/10 p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <CheckCircle2
-                      size={18}
-                      className="text-accent"
-                      aria-hidden="true"
-                    />
+                <div className="rounded-xl border border-border bg-background p-4">
+                  <p className="mb-2 text-xs font-semibold text-accent">
+                    REFERENCE EXPRESSION
+                  </p>
 
-                    <span className="text-xs font-semibold text-accent">
-                      REFERENCE EXPRESSION
-                    </span>
-                  </div>
+                  <p className="font-semibold">{example}</p>
 
-                  <p className="mb-3 font-semibold">{example}</p>
-
-                  {feedbackMessage && (
-                    <p className="mb-3 text-sm text-muted">{feedbackMessage}</p>
-                  )}
-
-                  <p className="text-xs leading-5 text-muted">
-                    현재는 참고 문장만 제공하며, 실제 AI 첨삭은 이후 연결할
-                    예정입니다.
+                  <p className="mt-3 text-xs text-muted">
+                    첨삭 결과를 표시할 수 없어 참고 표현을 보여드립니다.
                   </p>
                 </div>
               )}

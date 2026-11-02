@@ -22,12 +22,12 @@ const learningSteps = [
   {
     step: "02",
     title: "Correct",
-    description: "AI 첨삭으로 자연스러운 표현을 배워요.",
+    description: "AI 첨삭으로 문법과 자연스러운 표현을 배워요.",
   },
   {
     step: "03",
     title: "Repeat",
-    description: "어려웠던 문장을 저장하고 반복 복습해요.",
+    description: "여러 문제를 연습하고 다시 도전해요.",
   },
 ];
 
@@ -247,8 +247,8 @@ export default function Home() {
           </div>
 
           <p className="mt-4 text-center text-xs text-muted">
-            현재는 학습 화면 프로토타입입니다. AI 첨삭과 학습 기록 저장 기능은
-            개발 예정입니다.
+            Gemini AI를 활용한 영어 문장 첨삭 기능을 제공합니다. 학습 기록 저장
+            및 복습 기능은 추후 추가될 예정입니다.
           </p>
         </section>
       </div>

@@ -9,7 +9,7 @@ type FeedbackRequest = {
 };
 
 export type FeedbackResponse = {
-  mode: "mock";
+  mode: "mock" | "ai";
   questionId: string;
   originalAnswer: string;
   message: string;
