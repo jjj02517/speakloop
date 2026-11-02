@@ -5,6 +5,13 @@ import { Redis } from "@upstash/redis";
 import { scenarios } from "../../data/scenarios";
 import type { FeedbackResultData } from "../../components/FeedbackResult";
 
+const TURNSTILE_VERIFY_URL =
+  "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
+
+const TURNSTILE_TEST_SECRET_KEY = "1x0000000000000000000000000000000AA";
+
 const feedbackSchema = {
   type: "object",
   properties: {
@@ -55,6 +62,98 @@ function isFeedbackResultData(value: unknown): value is FeedbackResultData {
     Array.isArray(data.focusPoints) &&
     data.focusPoints.every((point) => typeof point === "string")
   );
+}
+
+async function verifyTurnstile(
+  request: Request,
+  token: string,
+): Promise<Response | null> {
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+  if (!secretKey || !siteKey) {
+    return Response.json(
+      { error: "보안 인증 서비스가 설정되지 않았습니다." },
+      { status: 503 },
+    );
+  }
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    (secretKey === TURNSTILE_TEST_SECRET_KEY ||
+      siteKey === TURNSTILE_TEST_SITE_KEY)
+  ) {
+    return Response.json(
+      {
+        error: "운영 환경에서는 실제 Turnstile 인증 키가 필요합니다.",
+      },
+      { status: 503 },
+    );
+  }
+
+  try {
+    const response = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        secret: secretKey,
+        response: token,
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!response.ok) {
+      return Response.json(
+        { error: "보안 인증 서버에 연결하지 못했습니다." },
+        { status: 503 },
+      );
+    }
+
+    const result: unknown = await response.json();
+
+    if (!result || typeof result !== "object" || Array.isArray(result)) {
+      return Response.json(
+        { error: "보안 인증 응답이 올바르지 않습니다." },
+        { status: 503 },
+      );
+    }
+
+    const validation = result as Record<string, unknown>;
+
+    if (validation.success !== true) {
+      return Response.json(
+        {
+          error: "보안 인증에 실패했습니다. 인증을 다시 진행해 주세요.",
+        },
+        { status: 403 },
+      );
+    }
+
+    if (process.env.NODE_ENV === "production") {
+      const expectedHostname = new URL(request.url).hostname;
+
+      if (validation.hostname !== expectedHostname) {
+        return Response.json(
+          { error: "보안 인증 도메인이 일치하지 않습니다." },
+          { status: 403 },
+        );
+      }
+    }
+
+    return null;
+  } catch {
+    console.error("Turnstile verification failed");
+
+    return Response.json(
+      {
+        error: "보안 인증 서비스에 일시적인 문제가 있습니다.",
+      },
+      { status: 503 },
+    );
+  }
 }
 
 function getClientIdentifier(request: Request): string {
@@ -126,7 +225,7 @@ async function checkRateLimit(request: Request) {
 
     if (ipResult.reason === "timeout") {
       return Response.json(
-        { error: "요청 제한 서비스를 일시적으로 사용할 수 없습니다." },
+        { error: "요청 제한 서비스를 사용할 수 없습니다." },
         { status: 503 },
       );
     }
@@ -142,7 +241,7 @@ async function checkRateLimit(request: Request) {
 
     if (globalResult.reason === "timeout") {
       return Response.json(
-        { error: "요청 제한 서비스를 일시적으로 사용할 수 없습니다." },
+        { error: "요청 제한 서비스를 사용할 수 없습니다." },
         { status: 503 },
       );
     }
@@ -160,8 +259,7 @@ async function checkRateLimit(request: Request) {
 
     return Response.json(
       {
-        error:
-          "요청 제한 서비스를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        error: "요청 제한 서비스를 확인할 수 없습니다.",
       },
       { status: 503 },
     );
@@ -200,7 +298,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const { questionId, answer } = body as Record<string, unknown>;
+  const { questionId, answer, turnstileToken } = body as Record<
+    string,
+    unknown
+  >;
 
   if (
     typeof questionId !== "string" ||
@@ -209,7 +310,9 @@ export async function POST(request: Request) {
     !answer.trim()
   ) {
     return Response.json(
-      { error: "문제 ID와 영어 답변을 입력해 주세요." },
+      {
+        error: "문제 ID와 영어 답변을 입력해 주세요.",
+      },
       { status: 400 },
     );
   }
@@ -232,6 +335,17 @@ export async function POST(request: Request) {
     );
   }
 
+  if (
+    typeof turnstileToken !== "string" ||
+    !turnstileToken.trim() ||
+    turnstileToken.length > 2048
+  ) {
+    return Response.json(
+      { error: "보안 인증 토큰이 필요합니다." },
+      { status: 400 },
+    );
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -239,6 +353,12 @@ export async function POST(request: Request) {
       { error: "Gemini API 키가 설정되지 않았습니다." },
       { status: 500 },
     );
+  }
+
+  const turnstileError = await verifyTurnstile(request, turnstileToken);
+
+  if (turnstileError) {
+    return turnstileError;
   }
 
   const rateLimitError = await checkRateLimit(request);

@@ -6,6 +6,7 @@ import type { FeedbackResultData } from "../components/FeedbackResult";
 type FeedbackRequest = {
   questionId: string;
   answer: string;
+  turnstileToken: string;
 };
 
 export type FeedbackResponse = {
@@ -19,6 +20,7 @@ export type FeedbackResponse = {
 async function submitFeedback({
   questionId,
   answer,
+  turnstileToken,
 }: FeedbackRequest): Promise<FeedbackResponse> {
   const response = await fetch("/api/feedback", {
     method: "POST",
@@ -28,6 +30,7 @@ async function submitFeedback({
     body: JSON.stringify({
       questionId,
       answer,
+      turnstileToken,
     }),
   });
 

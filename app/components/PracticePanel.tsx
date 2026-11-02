@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   AlertCircle,
   ArrowRight,
@@ -10,6 +12,8 @@ import {
 } from "lucide-react";
 
 import FeedbackResult, { type FeedbackResultData } from "./FeedbackResult";
+
+import TurnstileWidget from "./TurnstileWidget";
 
 type PracticePanelProps = {
   icon: LucideIcon;
@@ -26,7 +30,7 @@ type PracticePanelProps = {
   feedbackOriginalAnswer?: string | null;
   onStart: () => void;
   onAnswerChange: (value: string) => void;
-  onShowExample: () => void;
+  onShowExample: (turnstileToken: string) => void;
 };
 
 export default function PracticePanel({
@@ -46,6 +50,21 @@ export default function PracticePanel({
   onAnswerChange,
   onShowExample,
 }: PracticePanelProps) {
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+
+  const handleSubmitFeedback = () => {
+    if (!answer.trim() || !turnstileToken || feedbackIsPending || showExample) {
+      return;
+    }
+
+    onShowExample(turnstileToken);
+
+    setTurnstileToken(null);
+    setTurnstileResetKey((prev) => prev + 1);
+  };
+
   return (
     <section className="rounded-3xl border border-border bg-surface p-6 shadow-sm md:p-8">
       <div className="mb-6 flex items-center justify-between">
@@ -98,10 +117,24 @@ export default function PracticePanel({
             className="w-full resize-none rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           />
 
+          {!showExample && (
+            <div className="rounded-xl border border-border bg-background p-4">
+              <TurnstileWidget
+                resetKey={turnstileResetKey}
+                onTokenChange={setTurnstileToken}
+              />
+            </div>
+          )}
+
           <button
             type="button"
-            disabled={!answer.trim() || feedbackIsPending}
-            onClick={onShowExample}
+            disabled={
+              !answer.trim() ||
+              !turnstileToken ||
+              feedbackIsPending ||
+              showExample
+            }
+            onClick={handleSubmitFeedback}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-4 font-semibold transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {feedbackIsPending ? (
@@ -112,6 +145,11 @@ export default function PracticePanel({
                   aria-hidden="true"
                 />
                 AI가 문장을 분석하고 있어요...
+              </>
+            ) : showExample ? (
+              <>
+                <CheckCircle2 size={18} aria-hidden="true" />
+                AI 첨삭 완료
               </>
             ) : (
               <>

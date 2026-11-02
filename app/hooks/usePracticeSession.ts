@@ -57,14 +57,21 @@ export function usePracticeSession() {
     feedbackMutation.reset();
   };
 
-  const handleShowExample = () => {
-    if (!isPracticing || !answer.trim() || feedbackMutation.isPending) {
+  const handleShowExample = (turnstileToken: string) => {
+    if (
+      !isPracticing ||
+      !answer.trim() ||
+      !turnstileToken ||
+      feedbackMutation.isPending ||
+      showExample
+    ) {
       return;
     }
 
     feedbackMutation.mutate({
       questionId: currentQuestion.id,
       answer: answer.trim(),
+      turnstileToken,
     });
   };
 
